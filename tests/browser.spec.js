@@ -50,6 +50,58 @@ async function enter(page) {
   await page.goto(baseURL);
   await expect(page.locator('.sidebar')).toBeVisible();
 }
+async function selectProject(page, id) {
+  await page.locator('#project-picker-button').click();
+  await page.locator(`#project-menu [data-id="${id}"]`).click();
+}
+
+test('desktop project picker supports pointer, keyboard and dismissal', async ({ page }) => {
+  await enter(page);
+  const trigger = page.locator('#project-picker-button');
+  const menu = page.getByRole('listbox', { name: '项目列表' });
+  await expect(trigger).toBeVisible();
+  await expect(page.locator('#project-select')).toBeHidden();
+  await trigger.click();
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('option', { selected: true })).toContainText('CS7GV1.0');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('h1')).toContainText('嵌入式开发');
+  await expect(trigger).toContainText('嵌入式开发');
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await page.locator('h1').click();
+  await expect(menu).toBeHidden();
+  await trigger.click();
+  await page.keyboard.press('Tab');
+  await expect(menu).toBeHidden();
+  await trigger.click();
+  await menu.getByRole('option', { name: 'Linux 内核' }).click();
+  await expect(page.locator('h1')).toContainText('Linux 内核');
+});
+
+test('touch project picker keeps the native select and switches projects', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto(baseURL);
+    await page.getByRole('button', { name: '打开导航', exact: true }).click();
+    await expect(page.locator('#project-select')).toBeVisible();
+    await expect(page.locator('#project-picker-button')).toBeHidden();
+    await page.locator('#project-select').selectOption({ label: 'Linux 内核' });
+    await expect(page.locator('h1')).toContainText('Linux 内核');
+  } finally {
+    await context.close();
+  }
+});
 async function project(page, name) {
   await page.getByRole('button', { name: '新建项目', exact: true }).click();
   await page.getByLabel('项目名称', { exact: true }).fill(name);
@@ -75,7 +127,7 @@ test('public entry, independent projects, search and tag filtering', async ({ pa
     .evaluateAll((all) => all.map((n) => ({ value: n.value, name: n.textContent })));
   const firstCount = await page.locator('.graph-node').count();
   expect(firstCount).toBeGreaterThan(0);
-  await page.locator('#project-select').selectOption(options[1].value);
+  await selectProject(page, options[1].value);
   await expect(page.locator('h1')).toContainText(options[1].name);
   await page.getByRole('searchbox', { name: '搜索当前项目' }).fill('definitely-absent-content');
   await expect(page.getByText('还没有匹配的笔记', { exact: true })).toBeVisible();
@@ -318,7 +370,7 @@ test('delayed saves and project navigation freeze editing and preserve drafts on
 
   const navigation = await delayedResponse(page, `**/projects/${second.id}/notes`, 'GET');
   try {
-    await page.locator('#project-select').selectOption(second.id);
+    await selectProject(page, second.id);
     await navigation.arrived;
     await expect(page.locator('#note-content')).toBeDisabled();
     await expect(page.locator('[data-act="save-note"]')).toBeDisabled();
@@ -332,7 +384,7 @@ test('delayed saves and project navigation freeze editing and preserve drafts on
   await navigation.dispose();
   expect(store.listNotes(first.id)[0].version).toBe(2);
 
-  await page.locator('#project-select').selectOption(first.id);
+  await selectProject(page, first.id);
   await expect(page.locator('h1')).toHaveText('First regression');
   await page.locator(`[data-id="${note.id}"]`).first().click();
   await page.locator('[data-mode="edit"]').click();
@@ -344,7 +396,7 @@ test('delayed saves and project navigation freeze editing and preserve drafts on
       body: JSON.stringify({ error: 'Unavailable' }),
     }),
   );
-  await page.locator('#project-select').selectOption(second.id);
+  await selectProject(page, second.id);
   await page.getByRole('button', { name: '丢弃修改并离开' }).click();
   await expect(page.locator('#toast')).toContainText('Unavailable');
   await expect(page.locator('#note-content')).toBeEnabled();

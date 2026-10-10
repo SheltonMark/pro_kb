@@ -51,7 +51,24 @@ function destroyGraph() {
   graph = null;
 }
 function closeMenu() {
+  closeProjectPicker();
   document.body.classList.remove('menu-open');
+}
+function closeProjectPicker(restoreFocus = false) {
+  const menu = document.querySelector('#project-menu');
+  const trigger = document.querySelector('#project-picker-button');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  trigger.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) trigger.focus();
+}
+function openProjectPicker() {
+  if (saving || navigating) return;
+  const menu = document.querySelector('#project-menu');
+  if (!menu) return;
+  menu.hidden = false;
+  document.querySelector('#project-picker-button').setAttribute('aria-expanded', 'true');
+  (menu.querySelector('[aria-selected="true"]') || menu.querySelector('[role="option"]'))?.focus();
 }
 function setEditorBusy(busy) {
   document
@@ -452,6 +469,19 @@ async function handleAction(action, target) {
     renderMain();
   };
   switch (action) {
+    case 'toggle-projects':
+      if (target.getAttribute('aria-expanded') === 'true') closeProjectPicker(true);
+      else openProjectPicker();
+      break;
+    case 'select-project': {
+      const id = target.dataset.id;
+      closeProjectPicker(true);
+      if (id !== state.projectId) {
+        await runNavigation(() => loadProject(id));
+        document.querySelector('#project-picker-button')?.focus();
+      }
+      break;
+    }
     case 'menu':
       document.body.classList.toggle('menu-open');
       break;
@@ -555,6 +585,7 @@ async function handleAction(action, target) {
   }
 }
 document.addEventListener('click', (event) => {
+  if (!event.target.closest('.project-picker')) closeProjectPicker();
   const deleteButton = event.target.closest('[data-delete-project]');
   if (deleteButton) {
     void deleteProject().catch(report);
@@ -588,6 +619,9 @@ document.addEventListener('click', (event) => {
   if (!target) return;
   event.preventDefault();
   void handleAction(target.dataset.act, target).catch(report);
+});
+document.addEventListener('focusin', (event) => {
+  if (!event.target.closest('.project-picker')) closeProjectPicker();
 });
 document.addEventListener('input', (event) => {
   if (saving || navigating) {
@@ -638,6 +672,30 @@ document.addEventListener('change', (event) => {
   }
 });
 document.addEventListener('keydown', (event) => {
+  if (event.target.closest('.project-picker')) {
+    const menu = document.querySelector('#project-menu');
+    if (event.key === 'Escape' && !menu.hidden) {
+      event.preventDefault();
+      closeProjectPicker(true);
+      return;
+    }
+    if (event.target.id !== 'project-select' && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      if (menu.hidden) openProjectPicker();
+      else {
+        const options = [...menu.querySelectorAll('[role="option"]')];
+        const current = options.indexOf(document.activeElement);
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? options.length - 1
+              : (current + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+        options[next]?.focus();
+      }
+      return;
+    }
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
     document.querySelector('#search')?.focus();

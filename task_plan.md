@@ -1,4 +1,4 @@
-﻿# Pro KB implementation
+# Pro KB implementation
 
 Final scope: fixed black/gray floating frosted-glass workspace, native JavaScript, server SQLite, public anonymous viewing and editing. D3 isolated graph with thin edges and icy-blue hover neighborhood. Three demo projects (CS7GV1.0 12, embedded5, Linux5).
 

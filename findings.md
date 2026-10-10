@@ -1,4 +1,4 @@
-﻿# Findings
+# Findings
 
 - Empty initial local and GitHub repositories, no CodeGraph index.
 - Final requirements: server persistence, public access/CRUD, fixed dark neutral-black and light-gray floating glass (no theme switch or localStorage).
