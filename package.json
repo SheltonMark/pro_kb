@@ -1,0 +1,21 @@
+{
+  "name": "pro-kb",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Project-scoped knowledge workspace with Markdown and a connected graph",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "playwright test",
+    "format:check": "prettier --check public/js server tests public/index.html public/styles.css"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "prettier": "^3.9.9"
+  }
+}
